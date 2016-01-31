@@ -309,3 +309,36 @@ end
 ````
 
 ##### Isolate multiparameter initialization
+
+When we don't have the luxury of controlling the signature of the method, we can wrap the sending of messages inside our own methods.
+
+Imagine that *Gear* is part of a framework and that its initialization requires fixed-order arguments. Also imagine that our code has many places where it creates a new instance of *Gear*. We can DRY the initialization of *Gear* by wrapping it with a method.
+
+**The classes in your application should depend on code that you own; use a wrapping method to isolate external dependencies**
+
+````(ruby)
+module SomeFramework
+  class Gear
+    attr_reader :chainring, :cog, :wheel
+
+    def initialize(chainring, cog, wheel)
+      @chainring = chainring
+      @cog = cog
+      @wheel = wheel
+    end
+    # ...
+  end
+end
+
+module GearWrapper
+  def self.gear(args)
+    SomeFramework::Gear.new(args[:chanring], args[:cog], args[:wheel])
+  end
+end
+````
+
+Using a module conveys the idea that we're not supposed to create instances of *GearWrapper*.
+
+The other interesting thing about *GearWrapper* is that its sole purpose is to create instances of some other class. Object oriented designers call this kind of objects *factories*.
+
+The above techinque for substituting an options hash for a list of fixed-order arguments is perfect for cases where you are forced to depend on external interfaces that you cannot change. Do not allow these kinds of external dependencies to permeate your code; protect yourself by wrapping each in a method that is owned by your own application.
