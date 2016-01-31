@@ -191,7 +191,7 @@ The *Gear* class still knows too much, it still takes rim and tire as arguments 
 
 The changes reveal dependencies instead of concealing them, making the code easier to changes when circumstances allow it.
 
-#### Isolate vulnerable external messages
+##### Isolate vulnerable external messages
 
 External messages, sent to someone other than self, that are susceptible to change should be wrapped (encapsulated) inside methods, by doing this we remove the dependency to the method name and arguments.
 
@@ -341,4 +341,101 @@ Using a module conveys the idea that we're not supposed to create instances of *
 
 The other interesting thing about *GearWrapper* is that its sole purpose is to create instances of some other class. Object oriented designers call this kind of objects *factories*.
 
-The above techinque for substituting an options hash for a list of fixed-order arguments is perfect for cases where you are forced to depend on external interfaces that you cannot change. Do not allow these kinds of external dependencies to permeate your code; protect yourself by wrapping each in a method that is owned by your own application.
+The above technique for substituting an options hash with a list of fixed-order arguments is perfect for cases where you are forced to depend on external interfaces that you cannot change. Do not allow these kinds of external dependencies to permeate your code; protect yourself by wrapping each in a method that is owned by your own application.
+
+#### Managing Dependency Direction
+
+Dependencies always have a direction; one way to manage dependencies is to reverse said direction.
+
+##### Reversing Dependencies
+
+Early example shows *Gear* depending on *Wheel* or *diameter* but the code could have been easily written with the direction of the dependencies reversed. The following example illustrates one possible form of the reversal.
+
+````(ruby)
+class Gear
+  attr_reader :chainring, :cog
+
+  def initialize(chainring, cog)
+    @chainring = chainring
+    @cog = cog    
+  end
+
+  def gear_inches(diameter)
+    ratio * diameter
+  end
+
+  def ratio
+    chainring / cog.to_f
+  end
+end
+
+class Wheel
+  attr_reader :rim, :tire, :gear
+
+  def initialize(rim, tire, chainring, cog)
+    @rim = rim
+    @tire = tire
+    @gear = Gear.new(chainring, cog)
+  end
+
+  def diameter
+    rim + (tire * 2)
+  end
+
+  def gear_inches
+    gear.gear_inches(diameter)
+  end
+end
+````
+
+In an application that does not change, the direction of dependencies doesn't matter that much. However, our application will change and it's in this dynamic future that the choices we make will have consequences. If we get the direction right, our application will be pleasant to work on and easy to maintain. If you get it wrong then the dependencies will gradually take over and the application will become harder and harder to change.
+
+###### Choosing Dependency Direction
+
+If we see our classes as people, we would advice them to *depend on things that change less often that you do*.
+
+This statement is based on three simple truths about code:
+
++ Some classes are more likely than others to change in requirements.
++ Concrete classes are more likely to change than abstract classes.
++ Changing a class that has many dependents will result in widespread consequences.
+
+There are ways in which these truths intersects but each is a separate and distinct notion.
+
+###### Understanding likelihood of change
+
+The possibility for code to change must be taken into account for the code we write and for external code we use, namely, Ruby core classes and whatever framework, gem and/or library classes we rely on.
+
+Ruby base classes change a great deal less often than our code. This makes it perfectly reasonable to depend on the * method as gear_inches quietly does.
+
+Framework classes are different, we must judge the maturity and development cycles of external modules and frameworks that our code relies on to determine the possibility of change. In general frameworks are less likely to change than our own code but it is possible to choose a framework whose development cycle makes its code change as often or more than our own.
+
+Regardless of its origin we should make a scale that ranks the code we use in our application according to its likelihood of change. This ranking is one key piece of information to consider when choosing the direction of dependencies.
+
+###### Recognizing Concretions and Abstractions
+
+We'll use the term *abstract* as defined by *Merriam-Webster*: Disassociated from any specific instance".
+
+Because of Ruby's dynamic typing, abstraction represent an idea about code rather than a technical restriction.
+
+This concept was illustrated earlier; at first, *Gear* depended on a concrete *Wheel* class that was instantiated inside *Gear*, when we injected the *Wheel* dependency into *Gear* it made it depend on an abstract class whose only requirement is to respond to a *diameter* method.
+
+In a statically typed language the compiler acts as an unit test for types that prevents us from unintentionally creating this kind of abstractions, to achieve this we would have to create an abstract interface that defines the *diameter* method and include this interface inside *Wheel*.
+
+Interfaces, either explicitly defined or created via Duck typing, represent common stable qualities. They are less likely to change than the concrete classes from which they were extracted. Depending on an abstraction is always safer than depending on a concretion because by its very nature, the abstraction is more stable.
+
+###### Avoiding Dependent-Laden Classes
+
+The consequences of changing a dependent-ladden class are obvious. Not so apparent are the consequences of even *having* a dependent-ladden application. A class that, if changed, will cause changes to ripple through the application, will be under enormous pressure to *never* change, EVER. The application may be permanently handicapped by our reluctance to pay the price required to make a change to this class.
+
+###### Finding the Dependencies that Matter
+
+* Refer to figure 3.2 in chapter 3 *
+
+* Depend on things that change less often you do * is a heuristic that stands in for all the ideas in this section. The zones are a useful way to organize our thoughts but in the fog of development it may not be obvious which classes go where. Very often we are exploring our way to a design and at any given moment the future is unclear. Following this rule of thumb at every opportunity will cause your application to evolve a healthy design.
+
+### Summary
+
+Dependency management is core to creating future proof applications. Injecting dependencies creates loosely coupled objects that can be reused in novel ways. Isolating dependencies allows objects to quickly adapt to unexpected changes. Depending on abstractions decreases the likelihood of facing these changes.
+
+The key to managing dependencies is to control their direction. The road to maintenance nirvana is paved with classes that change less often than they do.
