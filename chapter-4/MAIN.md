@@ -155,3 +155,13 @@ Figure 4.4 is an improvement in some areas but a failure in others. This design 
 Moe must not only know *what* he wants it but now he must know *how* other objects should collaborate to provide it.
 
 Going back to the kitchen metaphor, Moe isn't ordering from a menu, he's going into the kitchen and cooking. *Customer* is taking responsibilities that belong somewhere else and is binding itself to an implementation that might change.
+
+##### Asking for what instead of how
+
+There is a subtle, yet important, distinction between a message that that asks for what the sender wants and a message that tells the receiver how to behave. Understanding this difference is a key part of creating reusable class with well-defined public interfaces.
+
+To understand the difference between *what* vs *how* let's put the customer and trip design problem to rest for a while.
+
+![Sequence diagram](figure-4-5.png)
+
+In figure 4.5 a trip is about to depart and it needs to make sure all the bicycles scheduled to be used are in good shape. The use case is: A trip, in order to start, needs to ensure that all its bicycles are mechanically sound. *Trip* could know exactly how to make a bike ready for a trip and could ask a *Mechanic* to do each of those things.

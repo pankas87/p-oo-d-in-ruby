@@ -1,5 +1,5 @@
 # Practical Object-Oriented Design in Ruby
-### A book by Sandi Metz
+### A book by [Sandi Metz](http://www.sandimetz.com/)
 
 This repository is a collection of the notes I take and the exercises I code, copy and develop while reading POODR.
 
