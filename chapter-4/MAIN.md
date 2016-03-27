@@ -165,3 +165,39 @@ To understand the difference between *what* vs *how* let's put the customer and 
 ![Sequence diagram](figure-4-5.png)
 
 In figure 4.5 a trip is about to depart and it needs to make sure all the bicycles scheduled to be used are in good shape. The use case is: A trip, in order to start, needs to ensure that all its bicycles are mechanically sound. *Trip* could know exactly how to make a bike ready for a trip and could ask a *Mechanic* to do each of those things.
+
+We can see that *Trip* knows many details about what a mechanic does. This knowledge means that with any change to the *Mechanic* process of preparing a bike, *Trip* must change.
+
+Figure 4.6 depicts an alternative where *Trip* asks *Mechanic* to prepare each bicycle, leaving the implementation details to *Mechanic*.
+
+![Sequence diagram](figure-4-6.png)
+
+*Trip* has delegated the responsibility of preparing a bicycle to *Mechanic*, *Trip* is concerned with what it wants not how to achieve it. Any change in the implementation details of how to prepare a bicycle for a trip will not affect *Trip*
+
+One side effect of changing the conversation between *Trip* and *Mechanic* from *how* to *what* is reducing the size of the public interface of *Mechanic*. Because mechanic promises that its public interface is stable and unchanging, having a small public interface means that there are few methods for others to depend on. This reduces the possibility of *Mechanic* someday changing its public interface, braking its promise and causing unexpected changes somewhere else in the application.
+
+This is a great improvement on maintainability but *Trip* still knows a lot about *Mechanic*. The code would be more flexible and more maintainable if *Trip* could work while knowing even less.
+
+##### Seeking Context Independence
+
+The things that an object knows about other objects make up its context. *Trip* has a single responsibility but expects a context. In this case, the existence of an object that can respond to the prepare_bicycle message.
+
+Context is a coat that *Trip* wears everywhere, any use of *Trip* for testing or any other, requires the existence of a *Mechanic* object that can prepare the bicycles. *Trip* cannot be reused without providing a *Mechanic*-like object that responds to *prepare_bicycle*.
+
+There is a direct effect of an object's context in the ability to reuse it. Objects with simple contexts are easier to use and test, they expect few things from their surroundings. Objects with a complex context are hard to use and test, they require a complex setup.
+
+The best possible situation for an object is to be completely independent of its context and being able to collaborate with others with no need of knowing who they are. The technique for achieving this, dependency injection, was studied earlier in the book.
+
+The new challenge is to make *Trip* invoke correct behavior from *Mechanic* without knowing what *Mechanic* does. The solution to this problem lies in the distinction between *what* and *how*, and arriving at a solution requires concentrating on what *Trip* wants.
+
+*Trip* wants to be prepared, the need to be prepared is within the realm of *Trip*, however, the knowledge that bicycles must be prepared may belongs in the province of *Mechanic*. Bicycle preparation is more related to how a *Trip* gets prepared than to what a *Trip* wants.
+
+![Sequence diagram](figure-4-7.png)
+
+In this design *Trip* know nothing about *Mechanic*, it just know that there is an object that responds to the *prepare_trip* message and invokes said message passing *self* as a parameter.
+
+Now all the knowledge about how mechaics prepare trips is contained inside the *Mechanic* class, *Mechanic* even takes care of calling back *Trip* and asking for the list of bicycles that need to be prepared.
+
+Both of the objects are now easier to change, test and reuse.
+
+##### Trusting other objects
