@@ -194,10 +194,56 @@ The new challenge is to make *Trip* invoke correct behavior from *Mechanic* with
 
 ![Sequence diagram](figure-4-7.png)
 
-In this design *Trip* know nothing about *Mechanic*, it just know that there is an object that responds to the *prepare_trip* message and invokes said message passing *self* as a parameter.
+In this design *Trip* knows nothing about *Mechanic*, it just knows that there is an object that responds to the *prepare_trip* message and invokes said message passing *self* as a parameter.
 
-Now all the knowledge about how mechaics prepare trips is contained inside the *Mechanic* class, *Mechanic* even takes care of calling back *Trip* and asking for the list of bicycles that need to be prepared.
+Now all the knowledge about how mechanics prepare trips is contained inside the *Mechanic* class, *Mechanic* even takes care of calling back *Trip* and asking for the list of bicycles that need to be prepared.
 
 Both of the objects are now easier to change, test and reuse.
 
 ##### Trusting other objects
+
+The design illustrated from Figure 4.5 to Figure 4.7 represent a movement towards increasingly object-oriented code and mirror the stages of of development of a novice designer.
+
+Figure 4.5 is quite procedural. *Trip* tells a *Mechanic* how to prepare a bicycle, as if *Trip* were the main program and *Mechanic* a bunch of callable functions.
+
+Figure 4.6 is more object-oriented. *Trip* asks *Mechanic* to prepare a bicycle. *Trip*'s context is reduced and so is *Mechanic*'s public interface. Also, now you don't need a *Trip* to prepare a bicycle; the *prepare_bicycle* method is reusbale in other contexts.
+
+Responsibilities are placed in the correct places but *Trip* still has more context than necessary, still must have and object that responds to *prepare_bycicle*.
+
+Figure 4.7 is far more object-oriented. *Trip* doesn't know or care that it has a *Mechanic* and has no idea about what it'll do. *Trip* holds to an object to which it will send the *prepare_trip* message and expect said object to behave appropriately.
+
+*Trip* could even place this kind of objects in an array and send each the prepared message, trusting every preparer to its thing. This way we can add new preparers to *Trip* without changing its code. We can **extend** *Trip* without **modifying** it.
+
+This blind trust that objects will do their job without concerns about how they do it is a keystone of object-oriented design. It allows objects to collaborate without binding themselves to context. It's necessary in any application that expects to grow and change.
+
+##### Using Messages to Discover Objects
+
+With the knowledge of the distinction between *what* and *how* let's go back to original design problem from *Figure 4.3* and *Figure 4.4*.
+
+The use case for the problem was: A customer would like to see a list of available trips of appropriate difficulty, on a specific date, where rental bicycles are available.
+
+Neither of the designs was reusable or tolerant to changes. Both were tightly coupled and responsibilities were incorrectly assigned, and objects had more than one responsibility. In Figure 4.3 *Trip* knows too much, in Figure 4.4 *Customer* knows too much, tells other objects how to behave, and requires too much context.
+
+It is completely reasonable to send the *suitable_trips* message, that's why it appears in both sequence diagrams. The problem is not with the message, clearly, *Customer* should send it, the problem is with the receiver.
+
+This application needs and object that embody the rules at the intersection of *Customer*, *Trip* and *Bicycle*. The *suitable_trips* message will be part of its public interface.
+
+You can take many routes to realize that you need yet undefined objects, the advantage of discovering this missing via sequence diagrams is that the cost of being wrong is very low and the impediments of to changing your mind are extremely few. Sequence diagrams are experimental and will be discarded, we lack any attachment to them. They create an intention that is the starting point for your design.
+
+Perhaps the application should contain a *TripFinder* class, responsible for finding *suitable_trips*, like it's shown in Figure 4.8.
+
+![Sequence diagram](figure-4-8.png)
+
+*TripFinder* contains all knowledge of what makes a trip suitable suitable. It knows the rules and does whatever necessary to respond to the *suitable_trips* message. It provides a consistent public interface while hiding messy, changeable internal implementation details.
+
+Now that the behavior has been extracted from *Customer* it can be used in isolation by any other object.
+
+##### Creating a Message Base Application
+
+Sequence diagrams are powerfully useful in a transient way; they make otherwise impossibly convoluted conversations comprehensible.
+
+Useful as they are, they're a tool, nothing more. They help keep the focus on messages and allow you to form a rational intention about the first thing to assert in a test.
+
+Switching attention from objects to messages allows you to concentrate on designing an application built upon public interfaces.
+
+#### Writing code that puts its best interface forward
