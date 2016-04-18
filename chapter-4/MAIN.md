@@ -238,7 +238,7 @@ Perhaps the application should contain a *TripFinder* class, responsible for fin
 
 Now that the behavior has been extracted from *Customer* it can be used in isolation by any other object.
 
-##### Creating a Message Base Application
+##### Creating a Message Based Application
 
 Sequence diagrams are powerfully useful in a transient way; they make otherwise impossibly convoluted conversations comprehensible.
 
@@ -246,4 +246,96 @@ Useful as they are, they're a tool, nothing more. They help keep the focus on me
 
 Switching attention from objects to messages allows you to concentrate on designing an application built upon public interfaces.
 
-#### Writing code that puts its best interface forward
+### Writing Code That Puts its Best Interface Forward
+
+Since our design skills are always improving but never perfected and because even today's beautiful design may look ugly in light of tomorrow's requirements; it is difficult to have perfect interfaces.
+
+This shouldn't deter us from trying. To evolve interfaces must first be born. It is more important to have a well-defined interface existing than it being perfect.
+
+**Think** about interfaces, they must be created intentionally for they are the ones that define your application, more than all of your tests and any of the code.
+
+#### Create Explicit Interfaces
+
+You should write code that works today but that is adaptable to changes in the future and that can be reused for new purposes. Since others will be using your methods, you must communicate which ones are dependable.
+
+Methods in the public interface should:
+
++ Be explicitly defined as such
++ Be more about what than how
++ Have names that, insofar as you can anticipate, will not change
++ Take a hash as ab options parameter.
+
+You should be as intentional about the private interface too. Test should not include the private methods, or if they do, should be isolated from the tests of the public methods. Since tests can serve as documentation for an interface, testing private methods could send wrong signals about their reliability.
+
+Ruby provides three keywords **public**, **private** and **protected**. Use of these keywords serves two distinct purposes. They indicate which methods are stable and which are not. Second, they control the visibility of a methods to other parts of the application.
+
+#### Public, Protected and Private keywords
+
+The **private** keyword denotes the least stable kind of methods and provides the minimum visibility. They must be called from within the implicit receiver.
+
+The **protected** keyword also indicates that a method is unstable but with slightly different visibility restrictions. Protected methods allow explicit receivers as long as the receiver is **self** or an instance of the same class or subclass of **self**.
+
+Ruby supplies with several mechanism to bypass these visibility restrictions imposed by **private** and **protected**.
+
+Users of a class can redefine any method to **public**. The **private** and **protected** keywords are more like flexible barriers than concrete restrictions. The notion that preventing method acces by using these keywords is just an illusion; they just make access harder, sending two messages:
+
++ You believe that you have better information **today** than programmers will have in the future.
++ You believe that those future programmers need to be prevented from accidentally using a method that you currently consider unstable.
+
+There are other ways to communicate stability, for example, Ruby on Rails use a naming convention where private methods are not blocked by a keyword but simply prefixed with a `_`.
+
+Regardless if how you choose to do so, as long as you find some way to convey this information, you have fulfilled your obligations to the future.
+
+#### Honor the Public Interfaces of others
+
+You should try hard to interact with other classes using only their public interface. Assume that the authors of those classes were as intentional as you and are trying desperately, across time and space, to communicate which methods are stable and dependable.
+
+If your design forces the use of a private method in another class, rethink your design. Try real hard to find an alternative.
+
+Depending on a private interface increases the risk of being forced to change. If the private interface is part of an external framework that undergoes periodic change, the dependency becomes a time bomb that will go off at the worst possible moment.
+
+A dependency on a private method of an external framework is a form of technical debt.
+
+#### Exercise Caution when Depending on Private Interfaces
+
+Sometimes even after doing our best, you find that you must depend on a private interface. This dangerous dependency should be isolated with the techniques studies in Chapter 3. Even if you cannot avoid the dependency on a private method, you can avoid referencing it multiple times across the application.
+
+Depending on a private interface increases risk, keep it to a minimum by isolating the dependency.
+
+#### Minimize Context
+
+Construct public interfaces with an eye towards minimizing the context they require from others, keeping the **what** vs **how** distinction in mind.
+
+Create public methods that allow senders to get what they want without knowing how the class implements the behavior.
+
+Also, don't surrender to a class with an ill-defined or absent public interface. When facing a class that forces you to think of implementation details, try to isolate them like we did with the mechanic example. The isolation could come in the form of a method you add to the class, that abstracts the behavior, a wrapper intermediate class or a wrapping method inside your own class.
+
+Do what best suits your needs, but create some kind of defined public interface and use it. This reduces your class's context and makes it easier to reuse and simpler to test.
+
+### The Law of Demeter
+
+Having read about responsibilities, dependencies and interfaces it's time to explore the Law of Demeter, a set of coding rules that result in loosely coupled objects.
+
+Loose coupling is nearly always a virtue but is just one component of design and must be balanced against competing needs. Some Demeter violations are harmless, but others expose a failure to correctly identify and define public interfaces.
+
+#### Defining Demeter
+
+The Law of Demeter restricts the set of objects to which a method may *send* messages, it's often paraphrased as "only talk to your inmediate neighbors" or "use only one dot".
+
+#### Consequences of violations
+
+TODO
+
+#### Avoiding violations
+
+TODO
+
+#### Listening to Demeter
+
+TODO
+
+### Summary
+
+Object-oriented applications are defined by the messages that pass between objects. This message passing takes place along "public" interfaces; well-defined public interfaces consist of stable methods that expose the responsibilities of their underlying classes and provide maximal benefit at minimal cost.
+
+Focusing on messages reveals objects that might otherwise be overloaded. When messages are trusting and ask for what the sender wants instead of telling the receiver how to behave, objects naturally evolve public interfaces that are flexible and reusable in novel and unexpected ways.
