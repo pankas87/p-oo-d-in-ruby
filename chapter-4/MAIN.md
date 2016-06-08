@@ -1,6 +1,6 @@
-# Chapter 4.
+# Chapter 4. Creating Flexible Interfaces
 
-An object oritented application is more than just its classes.  It is made up of classes but defined by messages. Classes control what's in your source code repository and message reflect the living, animated application.
+An object oriented application is more than just its classes.  It is made up of classes but defined by messages. Classes control what's in your source code repository and message reflect the living, animated application.
 
 Design deals with:
 
