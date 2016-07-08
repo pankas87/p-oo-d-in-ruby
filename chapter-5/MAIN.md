@@ -2,9 +2,9 @@
 
 Duck typing is one technique that helps us to reduce the cost of change, which is the main goal of object oriented design.
 
-Knowing that messages are at the design center of our and being committed to construct rigorously defined public interfaces, we can mix these two ideas into duck typing.
+Knowing that messages are at the design center of our application and being committed to construct rigorously defined public interfaces, we can mix these two ideas into duck typing.
 
-Duck types are public interfaces that are not tied to a specific class, they add enormous flexibility to our application, replacing costly dependencies on classes with more forgiving dependencies on messages. Duck typed objects are defined by their behavior, not by their class. That is how the technique get its name, if an object quacks like a duck and walks like a duck the it is a duck.
+Duck types are public interfaces that are not tied to a specific class, they add enormous flexibility to our application, replacing costly dependencies on classes with more forgiving dependencies on messages. Duck typed objects are defined by their behavior, not by their class. That is how the technique get its name, if an object quacks like a duck and walks like a duck then it is a duck.
 
 ## Understanding Duck Typing
 
@@ -77,7 +77,7 @@ We should look at our application beyond the limited imagination of a class base
 
 ### Finding the Duck
 
-The key to remove the dependencies is to understand that since the *prepare* serves single purpose, the arguments arrive with the intention to collaborate to accomplish this goal, they're all here for the same reason which is unrelated to the argument's original class.
+The key to remove the dependencies is to understand that since the *prepare* serves a single purpose, the arguments arrive with the intention to collaborate to accomplish this goal, they're all here for the same reason which is unrelated to the argument's original class.
 
 Consider this problem from *Trip*'s point of view, it expects that every arguments acts like a preparer.
 
@@ -127,34 +127,107 @@ The *prepare* method can now accept new preparers without the need for change an
 
 ### Consequences of Duck Typing
 
+The first version of our code is very concrete, this makes it simple to understand but harder to extend. The final, duck-typed version is more abstract; it places slightly greater demands on your understanding but in return offers ease of extension. We can simply create new *Preparers* and pass them to the *prepare* method without changing anything in the *Trip* class.
 
+This tension between the costs of concretion and the costs of abstraction is fundamental to object-oriented design. Concrete code is easy to understand but costly to extend. Abstract code may seem more obscure at first but once understood, is far easier to change.
 
 ### Polymorphism
 
+*Morph* is the greek word for form, *morphism* is the state of having a form, therefore *polymorphism* is the state of having many forms.
+
+Polymorphism in OOP refers to the ability of many different objects to respond to the same message. Senders of the message need no to care about the class of the receiver.
+
+A single message has many (poly) forms (morphs).
+
+There are several ways to achieve polymorphism; duck typing is one of them; inheritance and behavior sharing (via Ruby modules) are others.
+
+Polymorphic methods have an implicit bargain, they agree to be interchangeable from the point of view of the sender. When we are implementing polymorphism it's our responsibility to enforce this agreement and make sure that objects that respond to polymorphic messages are really interchangeable
+
 ## Writing Code That Relies on Ducks
+
+It is easy to implement duck types, the real design challenge is being able to detect when our application could benefit from duck typing.
 
 ### Recognizing Hidden Ducks
 
+Several common patterns indicate the presence of a hidden duck in our existing code:
+
++ Case statements that switch on class
++ *kind_of?* and *is_a?*
++ *responds_to?*
+
 #### Case Statements That Switch on Class
+
+The example we already saw, the most common and obvious indicator of the presence of a hidden duck.
 
 #### kind_of? and is_a?
 
+Using *kind_of?* or *is_a?* to determine what message should be sent to an object is a clear indication that there is an undiscovered, it really is no different from the previous case that switches on class.
+
 #### responds_to?
+
+Using *responds_to?* eliminates the dependency on class names but we're still bound to knowing method names and arguments.
+
+````(ruby)
+def prepare
+  preparers.each do |preparer|
+    if preparer.responds_to?(:prepare_bicyles)
+      preparer.prepare_bicycles(bicycles)
+    elsif preparer.responds_to?(:buy_food)
+      preparer.buy_food(customers)
+    elsif preparer.responds_to?(:gas_up)
+      preparer.gas_up(vehicle)
+      preparer.fill_water_tank(vehicle)
+    end
+  end
+end
+````
+
+Removing the dependencies on class's names didn't free us from having to know that we need specific class methods, with certain arguments. Even though we're not referencing them explicitly, we're still expecting very specific classes.
 
 ### Placing Trust in Your Ducks
 
+Validating an object's class before sending it a message indicates the presence of an unidentified duck. You're basically saying: I know who you are and because of that I know what you do. This exposes a lack of trust in collaborating objects.
+
+This style of code indicates a missing object just like Demeter violations did. Instead of a concrete intermediate class, in this case we're missing an abstract duck type.
+
+Flexible applications are built on objects that operate on trust; it is your job to make the objects trustworthy.
+
+When you find these patters concentrate on the offending code's expectations, they can help you locate the duck type.
+
+Once you have a duck type in mind, define its interface, implement that interface and trust the implementers to behave correctly.
+
 ### Documenting Duck Types
 
-### Sharing Code Between Ducks
+The *Preparer* duck type and its public interface are a concrete part of the design but a virtual part of the code. It is just an implicit agreement on method names and arguments, this abstraction makes it strong as a design tool but makes it also less obvious in the code.
+
+Duck types public interfaces must be documented and tested well, and good tests are the best documentation, so you are already halfway done, you only need to write the tests, like we'll see in Chapter 9.
 
 ### Choosing Your Ducks Wisely
 
-## Conquering a Fear of Duck Typing
+Let's take a look at a code example that clearly violates the guidelines above, by testing the class of an object before deciding what message to send.
 
-### Subverting Duck Types with Statis Typing
+````(ruby)
+def firsr(*args)
+  if args.any?
+    if args.first.kind_of?(Integer) || (loaded? && ! args.first.kind_of?(Hash))
+      to_a.first(*args)
+    else
+      apply_finder_options(args.first).first
+    end
+  else
+    find_first
+  end
+end
+````
 
-### Static vs Dynamic Typing
+Event though this code is deciding the method to send based on the class there is a big difference with the examples studied above and that is the stability of the classes this method is depending on. When `first` depends on `Integer` and `Hash` it is depending on stable Ruby core classes that are very unlikely to change in a way that forces changes on `first`. It is a safe dependency, a duck type probably exists somewhere but we gain too little from finding it and implementing it, our cost of change will remain nearly the same.
 
-### Embracing Dynamic Typing
+The decision to create a duck type relies on judgement, if creating one reduces costs by removing unstable dependencies, do so. Lowering costs is the purpose of design.
+
+The underlying duck in the previous example would force us to monkey patch the Ruby core classes `Hash` and `Integer`; the trade off here is very different, changing Ruby base classes introduces greater risks, the benefit of applying this monkey patch should be big enough to justify and defend this design decision and the risks it would bring.
 
 ## Summary
+
+Messages are at the center of object-oriented applications and they pass among objects along public interfaces. Duck typing detaches these public interfaces from specific classes, creating virtual types that are defined by what they do instead of by who they are.
+
+Duck typing reveals underlying abstractions that might otherwise be invisible. Depending on these abstractions reduces risk and increases flexibility, making your application cheaper to maintain and easier to change.
