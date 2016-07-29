@@ -135,3 +135,41 @@ An `if` statement switching on variables named `style`, `type` or `category` giv
 In our case the `style` variable clearly marks a difference between objects that share some common behavior but have some unique properties and methods that apply only to one of the styles and not the other. This is the kind of problem that inheritance solves, highly related types that share common behavior but differ along some dimension.
 
 ### Choosing Inheritance
+
+Inheritance is very simple to understand if you look at it from the right perspective.
+
+Objects receive messages, no matter how complicated the code, an object handles a received message in one of two ways, either respond directly or it passes the message on to some other object for a response. Inheritance allows us to define a relationship between two objects such that when the first receives a message it does not understand it automatically delegates it to the second. It's as simple as that.
+
+In most object-oriented languages objects can inherit from only one superclass, this is because having multiple super classes creates complex challenges like deciding to which super class delegate a message received by an object that does not understand said message, or in the case of having several super classes implementing the same method, deciding on the priority of the implementations.
+
+The designers of many object oriented languages sidestep this complexity by restricting inheritance to only one superclass.
+
+We use inheritance all the time even if we have not created a class hierarchy ourselves. When we define a class and don't specify its superclass Ruby automatically sets it to Object. Every class you create is by definition a subclass of something. A nice example of automatic delegation of messages is the implementation of the `nil?` method.
+
+````
+class Object
+  def nil?
+    false
+  end
+end
+
+class NilClass < Object
+  def nil?
+    false
+  end
+end
+
+class String < Object
+end
+
+class MyString < String
+end
+````
+
+The original `nil?` method is defined in the `Object` class, any class that has `Object` in its class hierarchy (Literally any Ruby class) will have a default implementation of the `nil?` method to fall back to, one that responds with the value `false`; and `NilClass` implements its own version of `nil?` that responds with the value `true`. This way we can be sure that any object that does not implement the `nil?` method is by default `not nil`.
+
+The fact that unknown messages get delegated up the superclass hierarchy implies that subclasses are everything their classes are, plus more. An instance of `String` ``is`` a `String` but is also an `Object`. Subclasses are specializations of their super classes and must respond appropriately to any message defined in the public interface of said super classes.
+
+Going back to the bicycle example, we should revert to the original version of `Bicycle`, perhaps a mountain bike it's just a specification of `Bicycle` and we could solve our design problem by applying inheritance.
+
+## Misapplying Inheritance
