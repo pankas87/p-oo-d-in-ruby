@@ -173,3 +173,71 @@ The fact that unknown messages get delegated up the superclass hierarchy implies
 Going back to the bicycle example, we should revert to the original version of `Bicycle`, perhaps a mountain bike it's just a specification of `Bicycle` and we could solve our design problem by applying inheritance.
 
 ## Misapplying Inheritance
+
+The following is a first attempt at a MountainBike class, displaying some difficulties encountered by novices in implementing inheritance. This subclass inherits from Bicycle and overrides two methods, `initialize` and `spare`.
+
+````(ruby)
+class MountainBike < Bicycle
+  attr_reader :front_shock, :rear_shock
+
+  def initialize(args)
+    @front_shock  = args[:front_shock]
+    @rear_shock   = args[:rear_shock]
+    super(args)    
+  end
+
+  def spares
+    super.merge(rear_shock: rear_shock)
+  end
+end
+````
+
+When you send `super` it sends the message up the super class chain until it finds any implementation in the hierarchy.
+
+Jamming the new MountainBike class directly under the Bicycle class was blindly optimistic and running the code exposes several flaws.
+
+````
+mountain_bike = MountainBike.new(
+                  size: 'S',
+                  front_shock: 'Manitou',
+                  rear_shock: 'Fox'
+                )
+
+mountain_bike.size # -> 'S'
+
+mountain_bike.spares
+# ->  {
+#       :tire_size  => '23',       
+#       :chain      => '10-speed',
+#       :tape_color => nil,
+#       :front_shock => 'Manitou',
+#       :rear_shock => 'Fox',
+#     }
+````
+
+Checking out the previous code, `size` responds correctly but `spares` clearly gives us incorrect results, showing a skinny tire size and and uninitialized `tape_color` which is not working properly and is not necessary for a mountain bike that doesn't use handlebar tape.
+
+We could easily expect `MountainBike` to have a strange mix of road and mountain bike behavior. `Bicycle` is a concrete class that was not meant to be subclassed, combining behavior general to all bicycles and specific to road bicycles, and `MountainBike` inherits both the general and the specific.
+
+Because design is evolutionary, this situation arises all the time. The problem here started with the names of these classes.
+
+## Finding the Abstraction
+
+In the first design we chose a generic name, `Bicycle` for an object that was a little more specific, the current `Bicycle` class doesn't represent any kind of bike, it represents a very specific road bike.
+
+In the original version the generic name was good enough, and having an unnecessary overly specific name like `RoadBike` would have been a bad choice.
+
+Now that we have a `MountainBike` the `Bicycle` name is misleading because it implies inheritance between these two classes but `Bicycle` actually represents a road bike. Subclasses are specializations of their super classes; a `MountainBike` should be everything a `Bicycle` is, plus more.
+
+There are two rules when using inheritance:
+
++ The objects that you are modeling must truly have a generalization-specialization relationship.
++ You must use the correct coding techniques.
+
+Now it's time to separate the general from the specific in the `Bicycle` class, and move the specific to a new, separate `RoadBike` class.
+
+### Creating an Abstract Superclass
+
+In our new design `Bicycle` will be the superclass for `MountainBike` and `RoadBike`, `Bicycle` will contain the common behaviour and the subclasses will add specializations. This new version of bicycle will not define a complete bike, just the bits that all bicycles share, and because of that we should not directly use it to create instances, this is known in object oriented design as an `abstract class`. Some OOP languages have a syntax that allows you to explicitly declare a class abstract and the compiler or interpreter prevents you from creating instances of said abstract class. Ruby doesn't have any mechanism to define abstract classes, in line with its trusting nature, only good sense prevents other programmers from instantiating classes that should be considered as abstracts.
+
+Abstract classes exist to be subclassed, that's their sole purpose.
