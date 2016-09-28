@@ -238,6 +238,103 @@ Now it's time to separate the general from the specific in the `Bicycle` class, 
 
 ### Creating an Abstract Superclass
 
-In our new design `Bicycle` will be the superclass for `MountainBike` and `RoadBike`, `Bicycle` will contain the common behaviour and the subclasses will add specializations. This new version of bicycle will not define a complete bike, just the bits that all bicycles share, and because of that we should not directly use it to create instances, this is known in object oriented design as an `abstract class`. Some OOP languages have a syntax that allows you to explicitly declare a class abstract and the compiler or interpreter prevents you from creating instances of said abstract class. Ruby doesn't have any mechanism to define abstract classes, in line with its trusting nature, only good sense prevents other programmers from instantiating classes that should be considered as abstracts.
+In our new design `Bicycle` will be the superclass for `MountainBike` and `RoadBike`, `Bicycle` will contain the common behavior and the subclasses will add specializations. This new version of bicycle will not define a complete bike, just the bits that all bicycles share, and because of that we should not directly use it to create instances, this is known in object oriented design as an `abstract class`. Some OOP languages have a syntax that allows you to explicitly declare a class abstract and the compiler or interpreter prevents you from creating instances of said abstract class. Ruby doesn't have any mechanism to define abstract classes, in line with its trusting nature, only good sense prevents other programmers from instantiating classes that should be considered as abstracts.
 
-Abstract classes exist to be subclassed, that's their sole purpose.
+Abstract classes exist to be subclassed, that's their sole purpose. They supply a repository of common behavior shared among subclasses.
+
+It is recommended to create a hierarchy of abstract and concrete classes only when you have a specific requirement that forces you to deal with specializations of a general class. In our Bicycle example, the original `Bicycle` class, despite having a generic name, was used to model a specific type of bike, a road bike, this was good enough for the original situation where we had only one class to deal with. Creating a hierarchy has costs, the best way to minimize these costs is to wait until you have enough information to get the abstraction right, usually we should wait until we have at least three specific classes sharing behavior. Waiting until having more information available will increase the odds of finding the right abstraction.
+
+For now, let's assume we have a good reason to create a `Bicycle` hierarchy. The first step is to outline the general structure of our classes.
+
+````(ruby)
+class Bicycle
+  # This class is now empty
+  # All code has been moved to RoadBike
+end
+
+class RoadBike < Bicycle
+  # Now a subclass of Bicycle
+  # Contains all code from the old Bicycle class
+end
+
+class MountainBike < Bicycle
+  # Still a subclass of bicycle (Which is now empty)
+  # Code has not changed
+  # Code that it depends on has been moved from the parent to a peer
+end
+````
+
+Now instead of containing too much behavior, `Bicycle` contains none, the common behavior needed by `MountainBike` is not accessible to that class. We arrange the code this way because it's easier, less expensive and less risky to promote common (abstract) behavior rather than to demote specific behavior.
+
+`RoadBike` still works because it contains everything it needs, `MountainBike` on the other hand is relying on behavior inherited from its parent class which is now empty. For example, here' what happen when you create instances of each subclass and ask them for size.
+
+````(ruby)
+road_bike = RoadBike.new(
+              size: 'M',
+              tape_color: 'red' )
+
+road_bike.size # => "M"
+
+mountain_bike = MountainBike.new(
+                  size: 'S',
+                  front_shock: 'Man',
+                  rear_shock: 'Fox' )
+
+mountain_bike.size # NoMethodError: undefined method 'size'
+
+````
+
+### Promoting Abstract Behavior
+
+It's obvious why this fails, the `size` method is not defined anywhere along the hierarchy of MountainBike, neither is the `spares` method which is also common to both subclasses. Let's start by promoting size, which requires three changes: promoting the attribute reader and the initialization up to `Bicycle` from `RoadBike`, and sending `super` inside the `initialize` of `RoadBike`.
+
+````(ruby)
+class Bicycle
+  attr_reader :size # <- promoted from RoadBike
+
+  def initialize(args = {})
+    @size = args[:size] # <- promoted from RoadBike
+  end
+end
+
+class RoadBike < Bicycle
+  attr_reader :tape_color
+
+  def initialize(args)
+    @tape_color = args[:tape_color]
+    super(args) # <- RoadBike now MUST send super
+  end
+end
+````
+
+Now both `RoadBike` and `MountainBike` delegate the `size` message up their class hierarchy until it is found in the `Bicycle` class. This common behavior is now defined where it should be, in the abstract parent class.
+
+Some might note that the code for handling a bicycle's size was moved twice. Once from `Bicycle` to `RoadBike` and then back up from `RoadBike` to `Bicycle`. You might feel tempted to just skip this double moving and leave it in `Bicycle` but this a risky move. The push-everything-down-and-then-pull-some-things-up strategy is an important part of the refactoring. Correctly separating concrete from abstract behavior will prevent difficulties while using inheritance.
+
+If you start the refactoring by leaving everything inside the `Bicycle` class and then push the concrete down to `RoadBike` it is very likely that you will end up leaving inside `Bicycle` dangerous concrete behavior that belongs in `RoadBike` and it will go unnoticed for a long time. On the other hand, if you start promoting abstract behavior up to `Bicycle`, you will realize soon enough when some abstract behavior is missing, as long as any of the subclasses starts to fail because of some missing behavior it depends on; this situation will force you to either duplicate code or promote the common behavior to the abstract class, since even the most junior of developers avoids code duplication, the problem will be noticed and fixed by anyone working on the application.
+
+When deciding between refactoring strategies, indeed, when deciding between design strategies in general, it's useful to ask the question: "What will happen if I'm wrong". Promotion failures have low consequences, demotion failures on the other hand could go unnoticed for a long time, and inexperienced developers might start using conditional statements to avoid triggering this concrete behavior, creating quirky subclasses that will be constantly checking for type; this type checking could even leak to other parts of the application, increasing dependencies and creating an anti pattern very similar to the one we saw in the duck typing chapter.
+
+The general rule for refactoring into a new inheritance hierarchy is to arrange code so that you can promote abstractions rather than demote concretions. Every decision you make includes two costs: one to implement it and another to change it when you discover that you were wrong.
+
+### Separating Abstract from Concrete
+
+Both subclasses implement a version of the `spares` method. `Roaadbike`'s version is the original self-contained version, therefore, still works.
+
+````(ruby)
+class RoadBike < Bicycle
+  # Rest of the code
+
+  def spares
+    { chain:      '10-speed',
+      tire_size:  '23',
+      tape_color: tape_color }
+  end
+end
+````
+
+The `spares` method defined in `MountainBike` is a leftover from the first sub classing attempt and relies on the parent's `spares` that no longer exists up the hierarchy chain. Sending the `spares` message to an instance of `MountainBike` results in a `NoMethodError` exception.
+
+````(ruby)
+mountain_bike.spares # NoMethodError: super: no superclass method 'spares'
+````
