@@ -333,8 +333,275 @@ class RoadBike < Bicycle
 end
 ````
 
-The `spares` method defined in `MountainBike` is a leftover from the first sub classing attempt and relies on the parent's `spares` that no longer exists up the hierarchy chain. Sending the `spares` message to an instance of `MountainBike` results in a `NoMethodError` exception.
+The `spares` method defined in `MountainBike` is a leftover from the first sub classing attempt and relies on the parent's `spares` method that no longer exists up the hierarchy chain. Sending the `spares` message to an instance of `MountainBike` results in a `NoMethodError` exception.
 
 ````(ruby)
 mountain_bike.spares # NoMethodError: super: no superclass method 'spares'
+````
+
+The obvious solution is adding a `spares` method in our `Bicycle` class but it's not as simple as just copying the `spares` method in `RoadBike`.
+
+`RoadBike`'s version of the method knows too much, it's too coupled to the default hard coded values of a road bike and has the `tape_color` attribute which is not common to all bicycles. We must untangle the mess, separate the abstract from the concrete. The abstract parts will be promoted to `Bicycle` while the remaining concrete parts will stay in `RoadBike`.
+
+The first step is to add getter and setter methods for the common attributes, `chain` and `tire_size`, rather than using hard code values.
+
+````(ruby)
+class `Bicycle`
+  attr_reader :size, :chain, :tire_size
+
+  def initialize( args={} )
+    @size      = args[:size]
+    @chain     = args[:chain]
+    @tire_size = args[:tire_size]
+  end
+end
+````
+
+### Using the Template Method Pattern
+
+We will change the `initialize` method to send messages to get defaults. We will add the `default_chain` and `default_tire_size` to our methods.
+
+Wrapping defaults inside methods is generally a good practice but these new message serve another purpose as well, which is giving the subclasses an opportunity to contribute specializations by overriding the default methods. This technique is known as the ``template method pattern``.
+
+````(ruby)
+class Bicycle
+  attr_reader :size, :chain, :tire_size
+
+  def initialize( args = {} )
+    @size      = args[:size]
+    @chain     = args[:chain] || default_chain
+    @tire_size = args[:tire_size] || default_tire_size
+  end
+
+  def default_chain
+    '10-speed'
+  end
+end
+
+class RoadBike < Bicycle
+  # ...
+
+  def default_tire_size
+    '23'
+  end
+end
+
+class MountainBike < Bicycle
+  # ...
+
+  def default_tire_size
+    '2.1'
+  end
+end
+````
+
+`Bicycle` now provides structure, a common algorithm for its subclasses, allowing its them to influence the algorithm via overriding the methods.
+
+There's still a booby trap we need to defuse.
+
+### Implementing Every Template Method
+
+The `initialize` method in the parent class `Bicycle` sends the `default_tire_size` message but doesn't implement it, this responsibility is delegated to the subclass. This could be omitted by an innocent programmer who, for example, creates a new bicycle type, the recumbent bike an forgets to implement the `default_tire_size` method.
+
+````(ruby)
+class RecumbentBike < Bicycle
+  def default_chain
+    '9-speed'
+  end
+end
+
+bent = RecumbentBike.new # <- NameError: undefined local variable or method 'default_tire_size'
+````
+
+The original designer of the class rarely encounters this problem since he knows what are the requirements for subclasses. This error will be encountered by other programmers who could be changing the application to meet new requirements. The root cause of the problem is that `Bicycle` impose a requirement on subclasses that is not obvious by a quick glance at the parent class. The solution is easy, every class that uses the template method pattern should implement the method itself, even it simply throws an exception. This is a cost-effective way to document the requirements that subclasses must meet.
+
+````(ruby)
+class  Bicycle
+  # ...
+
+  def default_tire_size
+    raise NotImplementedError, "This #{self.class} cannot respond to:"
+  end
+end
+
+bent = RecumbentBike.new
+
+# NotImplementedError:
+# This RecumbentBike cannot respond to: 'default_tire_size'
+````
+
+It doesn't matter when the error is detected, it will be easy to correct and unambigous.
+
+Code that fails with reasonable error messages is easy to do in the present and will save us a lot of time and trouble in the future. Each error message is a small thing, but small things accumulate to produce big effects.Always document template method requirements by implementing matching methods and raising useful errors.
+
+## Managing Coupling Between Superclass and Subclasses
+
+`Bicycle` now contains most of the abstract behavior, now we need to add the `spares` method. There are many ways to implement it, with different levels of coupling between superclass and subclasses. We should always strive to reduce coupling to a minimum.
+
+### Understanding Coupling
+
+The simplest implementation produces a lot of coupling. Taking a look at `MountainBike` we see that its `spares` implementation sends `super`, and expects it to return a hash that will merge with its own spares hash.
+
+Then we should implement the `spares` method in our `Bicycle` class and rather than using hard coded values like the old `spares` implementation in `RoadBike`.
+
+Finally, it's just a matter of replicating in `RoadBike`'s `spare` a method a similar pattern to the one used in `MountainBike`: Sending super, expecting to receive a hash and merging that hash with `RoadBike`'s concrete spares.
+
+````(ruby)
+class Bicycle
+  attr_reader :size, :chain, :tire_size
+
+  def initialize( args = {} )
+    @size      = args[:size]
+    @chain     = args[:chain] || default_chain
+    @tire_size = args[:tire_size] || default_tire_size
+  end
+
+  def spares
+    {   tire_size:  tire_size,
+        chain:      chain }
+  end
+
+  def default_chain
+    '10-speed'
+  end
+
+  def default_tire_size
+    raise NotImplementedError, "This #{self.class} cannot respond to:"
+  end
+end
+
+class RoadBike < Bicycle
+  attr_reader :tape_color
+
+  def initialize(args)
+    @tape_color = args[:tape_color]
+    super(args)
+  end
+
+  def spares
+    super.merge({ tape_color: tape_color })
+  end
+
+  def default_tire_size
+    '23'
+  end
+end
+
+class MountainBike < Bicycle
+  attr_reader :front_shock, :rear_shock
+
+  def initialize(args)
+    @front_shock = args[:front_shock]
+    @rear_shock = args[:rear_shock]
+    super(args)
+  end
+
+  def spares
+    super.merge({ front_shock: front_shock, rear_shock: rear_shock })
+  end
+
+  def default_tire_size
+    '2.1'
+  end
+end
+````
+
+This class works as it is but there is still another booby-trap that needs to be defused.
+
+Both subclasses know things about themselves, like their `spares` implementation, but also know things about their parent, for example, its `spares` implementation that returns a hash. Knowing things about other classes creates dependencies, which makes change harder in the future.
+
+The trap that this coupling hide is illustrated in this example, showing a new subclass of `Bicycle` that doesn't send super in `initialize`
+
+````(ruby)
+class RecumbentBike < Bicycle
+  attr_reader :flag
+
+  def initialize(args)
+    @flag = args[:flag]
+    # Forgot to send super because ID10-T
+  end
+
+  def spare
+    super.merge({flag: flag})
+  end
+
+  def default_chain
+    '9-speed'
+  end
+
+  def default_tire_size
+    '28'
+  end
+end
+
+bent = RecumbentBike.new(flag: 'tall and organge')
+
+bent.spares
+=begin
+{ :tire_size => nil,  <- didn't get initialized
+  :chain     => nil,  <- didn't get initialized
+  :flag      => 'tall and orange' }
+=end
+
+````
+
+Failing to send super in `RecumbentBike`'s `initialize` the common initialization provided by `Bicycle` is missed and common attributes don't get their correct values. A similar thing happens if the `spares` method forgets to send super, it will not fail but the `spares` will not have the parts common to all bicycles (tires, chain). This pattern requires that subclasses know what they do but also how to interact with their superclass. It makes sense that subclasses know the specializations they contribute with, but having them know how to interact with their superclasses causes a lot of trouble. It pushes knowledge of the algorithm down to subclasses and causes duplication of code. Additionally, it increases the odds that future programmers that don't know the full details of the abstraction will create errors when writing new subclasses.
+
+### Decoupling Subclasses Using Hook Messages
+
+We'll do one last refactoring to prevent these problems. We will send hook messages in our superclasses, this will allow our subclasses to contribute specializations by implementing matching methods.
+
+In the following example, subclasses contribute to specialization via the `post_initialize` sent by the superclass' `initialize` method.
+
+````(ruby)
+class Bicycle
+  attr_reader :size, :chain, :tire_size
+
+  def initialize( args = {} )
+    @size      = args[:size]
+    @chain     = args[:chain] || default_chain
+    @tire_size = args[:tire_size] || default_tire_size
+
+    # The superclass both sends
+    post_initialize(args)
+  end
+
+  # and implements this method
+  def post_initialize(args)
+    nil
+  end
+
+  # ...
+end
+
+class RoadBike < Bicycle
+  def post_initialize(args)
+    @tape_color = args[:tape_color]
+  end
+end
+````
+
+Since we reove the `initialize` method from the subclass, now initialization is completely controlled by the superclass. Subclasses no longer need to worry about initialization routines, their only responsibility is to add specialization to their superclass. Coupling is reduced, subclasses need to know less about how and when initialization occurs, they only handle their specifics initializations.
+
+Putting control of the timing in the superclass means the algorithm can change  without forcing changes on the superclasses.
+
+The same technique can be used to remove the sent of super in the subclasses implementation of `spares`.
+
+````(ruby)
+class Bicycle
+  # ...
+
+  def spares
+    { tire_size:  tire_size,
+      chain:      chain }.merge(local_spares)
+  end
+end
+
+class RoadBike < Bicycle
+  # ...
+
+  def local_spares
+    { tape_color: tape_color }
+  end
+end
 ````
